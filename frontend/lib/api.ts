@@ -23,6 +23,13 @@ export function resolveApiUrl(url: string): string {
   return apiUrl(url);
 }
 
+// Absolute URL of the OpenAPI document (served by the backend at
+// `/openapi.json`, NOT under `/api/` — so a relative `/api/openapi.json`
+// link would hit the static frontend and fail with a Cloudflare 1003).
+export function openApiUrl(): string {
+  return apiUrl("/openapi.json");
+}
+
 import type {
   AdminJobCount,
   AdminOverview,

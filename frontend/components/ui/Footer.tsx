@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart } from "lucide-react";
-import Link from "next/link";
+import { openApiUrl } from "@/lib/api";
 
 export function Footer() {
   return (
@@ -17,12 +17,17 @@ export function Footer() {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-ink-dim">
-          <Link href="/search" className="transition-colors hover:text-neon">
+          <a href="/search" className="transition-colors hover:text-neon">
             Search
-          </Link>
-          <Link href="/api/openapi.json" className="transition-colors hover:text-neon">
+          </a>
+          <a
+            href={openApiUrl()}
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-neon"
+          >
             API
-          </Link>
+          </a>
           <a
             href="https://github.com"
             target="_blank"
