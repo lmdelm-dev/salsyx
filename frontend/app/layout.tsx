@@ -26,6 +26,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "anKliEWwotQF9V49Cnvg32my5DfxH-XcjI8MCHVNHEU",
+  },
   openGraph: {
     title: "Salsyx",
     description: "Nothing open-source should disappear forever.",
