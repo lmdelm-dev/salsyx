@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: "anKliEWwotQF9V49Cnvg32my5DfxH-XcjI8MCHVNHEU",
+    google: "75W5_cLAP2PhiuReFZbg3JHRiZSYQWwNZi7Sn9_bfRU",
   },
   openGraph: {
     title: "Salsyx",
