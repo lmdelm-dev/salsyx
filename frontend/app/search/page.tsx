@@ -82,7 +82,7 @@ function SearchPageInner() {
       const next = new URLSearchParams(searchParams.toString());
       if (value === null || value === "" || value === "0") next.delete(key);
       else next.set(key, value);
-      next.set("page", "1");
+      if (key !== "page") next.set("page", "1");
       router.push(`/search?${next.toString()}`);
     },
     [router, searchParams],
