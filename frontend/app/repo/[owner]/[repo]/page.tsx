@@ -32,6 +32,8 @@ import {
 import { ReadmePanel } from "@/components/repo/ReadmePanel";
 import { FileTree } from "@/components/repo/FileTree";
 
+const MIN_STARS_FOR_ARCHIVE = 5;
+
 export default function RepoPage() {
   const params = useParams<{ owner: string; repo: string }>();
   const owner = params.owner;
@@ -42,6 +44,7 @@ export default function RepoPage() {
   const [error, setError] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [requestDone, setRequestDone] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -70,11 +73,12 @@ export default function RepoPage() {
 
   const requestArchive = async () => {
     setRequesting(true);
+    setArchiveError(null);
     try {
       await api.requestArchive(`${owner}/${repo}`);
       setRequestDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
+      setArchiveError(e instanceof Error ? e.message : "Request failed");
     } finally {
       setRequesting(false);
     }
@@ -114,7 +118,14 @@ export default function RepoPage() {
 
       <AnimatePresence mode="wait">
         {result.status === "live" && result.repository && (
-          <LiveView key="live" result={result} onRequestArchive={requestArchive} requesting={requesting} requestDone={requestDone} />
+          <LiveView
+            key="live"
+            result={result}
+            onRequestArchive={requestArchive}
+            requesting={requesting}
+            requestDone={requestDone}
+            archiveError={archiveError}
+          />
         )}
         {result.status === "archived" && result.repository && result.archive && (
           <ArchivedView key="archived" result={result} />
@@ -125,6 +136,7 @@ export default function RepoPage() {
             onRequestArchive={requestArchive}
             requesting={requesting}
             requestDone={requestDone}
+            archiveError={archiveError}
           />
         )}
       </AnimatePresence>
@@ -194,13 +206,16 @@ function LiveView({
   onRequestArchive,
   requesting,
   requestDone,
+  archiveError,
 }: {
   result: RepoResponse;
   onRequestArchive: () => void;
   requesting: boolean;
   requestDone: boolean;
+  archiveError: string | null;
 }) {
   const r = result.repository!;
+  const eligible = r.stars_count >= MIN_STARS_FOR_ARCHIVE;
   return (
     <motion.div
       key="live"
@@ -264,12 +279,29 @@ function LiveView({
             ]}
           />
 
-          <div className="mt-6 flex items-center justify-between rounded-xl border border-edge bg-panel/60 px-4 py-3">
-            <p className="text-xs text-ink-dim">
-              <ShieldCheck className="mr-1 inline size-3.5 text-lime" />
-              This repository is live, but you can pre-archive it to guard against future deletion.
-            </p>
-            <ArchiveButton onClick={onRequestArchive} requesting={requesting} done={requestDone} />
+          <div className="mt-6 rounded-xl border border-edge bg-panel/60 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {eligible ? (
+                <p className="text-xs text-ink-dim">
+                  <ShieldCheck className="mr-1 inline size-3.5 text-lime" />
+                  This repository is live, but you can pre-archive it to guard against future deletion.
+                </p>
+              ) : (
+                <p className="text-xs text-ink-dim">
+                  <Star className="mr-1 inline size-3.5 text-amber" />
+                  Only repositories with at least {MIN_STARS_FOR_ARCHIVE}+ stars can be archived. This repo has {formatNumber(r.stars_count)}.
+                </p>
+              )}
+              <ArchiveButton
+                onClick={onRequestArchive}
+                requesting={requesting}
+                done={requestDone}
+                disabled={!eligible}
+              />
+            </div>
+            {archiveError && (
+              <p className="mt-2 text-xs text-pink" role="alert">{archiveError}</p>
+            )}
           </div>
 
           <ReadmePanel owner={r.owner.login} repo={r.name} />
@@ -372,10 +404,12 @@ function NotFoundView({
   onRequestArchive,
   requesting,
   requestDone,
+  archiveError,
 }: {
   onRequestArchive: () => void;
   requesting: boolean;
   requestDone: boolean;
+  archiveError: string | null;
 }) {
   return (
     <motion.div
@@ -400,8 +434,11 @@ function NotFoundView({
         snapshot yet. That&apos;s exactly the gap we&apos;re closing — request an archive and the
         crawler will preserve it the next time it appears.
       </p>
-      <div className="mt-8 flex items-center justify-center gap-3">
+      <div className="mt-8 flex flex-col items-center justify-center gap-3">
         <ArchiveButton onClick={onRequestArchive} requesting={requesting} done={requestDone} />
+        {archiveError && (
+          <p className="text-xs text-pink" role="alert">{archiveError}</p>
+        )}
         <Link
           href="/search"
           className="flex items-center gap-2 rounded-full border border-edge px-5 py-2.5 text-sm text-ink-dim transition-all hover:border-neon/50 hover:text-ink"
@@ -417,19 +454,21 @@ function ArchiveButton({
   onClick,
   requesting,
   done,
+  disabled,
 }: {
   onClick: () => void;
   requesting: boolean;
   done: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={requesting || done}
+      disabled={requesting || done || disabled}
       className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all ${
         done
           ? "border border-lime/40 bg-lime/10 text-lime"
-          : "bg-gradient-to-r from-cyan-500 to-violet-500 text-white hover:shadow-glow-cyan disabled:opacity-50"
+          : "bg-gradient-to-r from-cyan-500 to-violet-500 text-white hover:shadow-glow-cyan disabled:opacity-50 disabled:hover:shadow-none"
       }`}
     >
       {done ? (
@@ -440,6 +479,10 @@ function ArchiveButton({
         <>
           <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
           Requesting…
+        </>
+      ) : disabled ? (
+        <>
+          <Star className="size-4" /> {MIN_STARS_FOR_ARCHIVE}+ stars required
         </>
       ) : (
         <>

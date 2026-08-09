@@ -19,6 +19,9 @@ use crate::service::{
 };
 use crate::state::AppState;
 
+/// Repositories below this star threshold are not eligible for archiving.
+pub const MIN_STARS_FOR_ARCHIVE: i64 = 5;
+
 #[derive(Debug, Serialize)]
 pub struct ArchiveResponse {
     pub archive: salsyx_shared::archive::Archive,
@@ -153,13 +156,13 @@ pub async fn create_archive(
 
     let row = crate::db::find_repository(&state.pool, &normalized).await?;
 
-    let repository_id = match row {
-        Some(r) => r.id,
+    let (repository_id, stars_count) = match row {
+        Some(r) => (r.id, r.stars_count),
         None => {
             // Not in our DB — resolve live to seed it.
             let result = resolve_repository(&state, &normalized, false).await?;
             match result.outcome {
-                ResolveOutcome::Live { repository, .. } => repository.id,
+                ResolveOutcome::Live { repository, .. } => (repository.id, repository.stars_count),
                 _ => {
                     return Err(crate::error::AppError::NotFound {
                         full_name: normalized,
@@ -168,6 +171,15 @@ pub async fn create_archive(
             }
         }
     };
+
+    // Strategy: only preserve repositories with a minimum star count. This
+    // keeps storage targeted at repos worth keeping and discourages abuse.
+    // The frontend mirrors this rule and disables the button before calling.
+    if stars_count < MIN_STARS_FOR_ARCHIVE {
+        return Err(crate::error::AppError::Validation(format!(
+            "⚠️ at least {MIN_STARS_FOR_ARCHIVE}+ stars required to archive (this repo has {stars_count})"
+        )));
+    }
 
     // Avoid duplicate pending archives.
     if crate::db::has_pending_archive(&state.pool, repository_id).await? {
