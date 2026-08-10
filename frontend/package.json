@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "pages:build": "next-on-pages && node scripts/generate-sitemap.mjs .vercel/output/static",
+    "pages:deploy": "wrangler pages deploy .vercel/output/static --project-name=salsyx"
   },
   "dependencies": {
     "@react-three/fiber": "^9.0.0",
